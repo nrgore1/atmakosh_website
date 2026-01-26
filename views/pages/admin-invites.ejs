@@ -2,29 +2,31 @@
 <%- include('../partials/nav', { SITE, path }) %>
 
 <section class="section">
-  <div style="display:flex; justify-content:space-between; align-items:center;">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
     <h1>Invite Requests</h1>
     <a href="/admin/logout" class="btn btn--ghost">Logout</a>
   </div>
 
-  <p class="lead">
-    Review incoming requests for the Atmakosh LLM invite-only preview.
-  </p>
+  <p class="lead">Approve or reject invite requests. Approvals trigger an email with the whitepapers access link.</p>
 
-  <div class="admin-table">
-    <% if (rows.length === 0) { %>
-      <p class="muted">No invite requests yet.</p>
-    <% } %>
+  <% rows.forEach(r => { %>
+    <div class="admin-row">
+      <div><strong><%= r.name %></strong> — <%= r.email %></div>
+      <div class="muted small">Status: <strong><%= r.status %></strong> • <%= r.created_at %></div>
+      <div style="margin-top:10px;"><%= r.intent %></div>
 
-    <% rows.forEach(r => { %>
-      <div class="admin-row">
-        <div><strong>Name:</strong> <%= r.name %></div>
-        <div><strong>Email:</strong> <%= r.email %></div>
-        <div><strong>Intent:</strong><br/><%= r.intent %></div>
-        <div class="muted small"><%= r.ts %></div>
-      </div>
-    <% }) %>
-  </div>
+      <% if (r.status === 'pending') { %>
+        <div style="margin-top:14px;">
+          <form method="POST" action="/admin/invite/<%= r.id %>/approve" style="display:inline;">
+            <button class="btn btn--primary" type="submit">Approve</button>
+          </form>
+          <form method="POST" action="/admin/invite/<%= r.id %>/reject" style="display:inline;margin-left:10px;">
+            <button class="btn btn--ghost" type="submit">Reject</button>
+          </form>
+        </div>
+      <% } %>
+    </div>
+  <% }) %>
 </section>
 
 <%- include('../partials/footer') %>
