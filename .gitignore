@@ -1,0 +1,5 @@
+node_modules/
+.env
+data/invites.ndjson
+npm-debug.log
+.DS_Store

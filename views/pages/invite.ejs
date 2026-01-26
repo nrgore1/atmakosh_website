@@ -1,0 +1,57 @@
+<%- include('../partials/head', { SITE }) %>
+<%- include('../partials/nav', { SITE, path }) %>
+
+<section class="section">
+  <div class="kicker">Invitation Only</div>
+
+  <h1>Enter the private preview</h1>
+
+  <p class="lead">
+    Atmakosh LLM will be opening shortly for an invite-only preview.
+    We are inviting a limited group of leaders, builders, and institutions.
+  </p>
+
+  <div class="invite-wrapper">
+    <form method="POST" action="/api/invite" class="invite-form">
+
+      <label>
+        <span>Name</span>
+        <input
+          type="text"
+          name="name"
+          placeholder="Your full name"
+          required
+        />
+      </label>
+
+      <label>
+        <span>Email</span>
+        <input
+          type="email"
+          name="email"
+          placeholder="you@organization.com"
+          required
+        />
+      </label>
+
+      <label>
+        <span>
+          How will you apply Atmakosh’s wisdom in your work?
+        </span>
+        <textarea
+          name="intent"
+          rows="5"
+          placeholder="Describe your role, domain, and the decisions you are responsible for."
+          required
+        ></textarea>
+      </label>
+
+      <button type="submit" class="btn btn--primary">
+        Request Invitation
+      </button>
+
+    </form>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

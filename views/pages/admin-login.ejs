@@ -1,0 +1,24 @@
+<%- include('../partials/head', { SITE }) %>
+
+<section class="section" style="max-width:420px;">
+  <h1>Admin Access</h1>
+
+  <p class="lead">
+    Enter the administrator password to access the invite dashboard.
+  </p>
+
+  <% if (error) { %>
+    <p style="color:#f87171;"><%= error %></p>
+  <% } %>
+
+  <form method="POST" action="/admin" class="invite-form">
+    <label>
+      <span>Password</span>
+      <input type="password" name="password" required />
+    </label>
+
+    <button class="btn btn--primary">Access Dashboard</button>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

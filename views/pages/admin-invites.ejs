@@ -1,0 +1,30 @@
+<%- include('../partials/head', { SITE }) %>
+<%- include('../partials/nav', { SITE, path }) %>
+
+<section class="section">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h1>Invite Requests</h1>
+    <a href="/admin/logout" class="btn btn--ghost">Logout</a>
+  </div>
+
+  <p class="lead">
+    Review incoming requests for the Atmakosh LLM invite-only preview.
+  </p>
+
+  <div class="admin-table">
+    <% if (rows.length === 0) { %>
+      <p class="muted">No invite requests yet.</p>
+    <% } %>
+
+    <% rows.forEach(r => { %>
+      <div class="admin-row">
+        <div><strong>Name:</strong> <%= r.name %></div>
+        <div><strong>Email:</strong> <%= r.email %></div>
+        <div><strong>Intent:</strong><br/><%= r.intent %></div>
+        <div class="muted small"><%= r.ts %></div>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>
