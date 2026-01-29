@@ -3,6 +3,8 @@ const fs = require("fs");
 const express = require("express");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 const pool = require("./db");
 
@@ -11,12 +13,21 @@ const PORT = process.env.PORT || 3000;
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "changeme";
 const SITE_URL = (process.env.SITE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
+const PDF_TOKEN_MINUTES = Number(process.env.PDF_TOKEN_MINUTES || 60);
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
+// If behind proxy (Hostinger), trust it for IP + secure cookies
+app.set("trust proxy", 1);
+
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
+
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false // keep simple for now (we can tighten later)
+}));
 
 /* Simple cookie parser */
 app.use((req, res, next) => {
@@ -31,34 +42,41 @@ app.use((req, res, next) => {
   next();
 });
 
-/* Helpers */
 function site(){
   return { name: "Atmakosh LLM", tagline: "The Soul-Repository AI" };
 }
+
 function hash(v) {
   return crypto.createHash("sha256").update(v).digest("hex");
 }
+
 function isAdmin(req) {
   return req.cookies.admin === hash(ADMIN_PASSWORD);
 }
+
 function getIP(req) {
-  return String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").slice(0, 80);
+  // trust proxy enabled; x-forwarded-for may be comma-separated
+  const xf = String(req.headers["x-forwarded-for"] || "");
+  const ip = xf ? xf.split(",")[0].trim() : String(req.socket.remoteAddress || "");
+  return ip.slice(0, 80);
 }
+
 function getUA(req) {
   return String(req.headers["user-agent"] || "").slice(0, 255);
 }
+
 async function audit(req, event, meta = {}) {
   try {
     await pool.execute(
       "INSERT INTO audit_log (event, actor, ip, user_agent, meta) VALUES (?, ?, ?, ?, ?)",
-      [event, "admin", getIP(req), getUA(req), JSON.stringify(meta)]
+      [event, "system", getIP(req), getUA(req), JSON.stringify(meta)]
     );
   } catch (e) {
-    console.error("Audit log failed:", e.message);
+    // do not block on audit failure
   }
 }
 
-/* Email (approval notifications) */
+/* Email */
 function mailer() {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 587);
@@ -69,9 +87,7 @@ function mailer() {
   if (!host || !user || !pass) return null;
 
   return nodemailer.createTransport({
-    host,
-    port,
-    secure,
+    host, port, secure,
     auth: { user, pass }
   });
 }
@@ -109,21 +125,94 @@ const PAPERS = [
   { slug: "ethics-without-ideology", title: "Ethics Without Ideology", file: "ethics-without-ideology.pdf" }
 ];
 
-/* Public Routes */
-app.get("/", (req, res) => res.render("pages/home", { SITE: site(), path: "/" }));
-app.get("/invite", (req, res) => res.render("pages/invite", { SITE: site(), path: "/invite" }));
-app.get("/whitepapers", (req, res) => res.render("pages/whitepapers", { SITE: site(), path: "/whitepapers", papers: PAPERS }));
-app.get("/whitepapers/access", (req, res) => res.render("pages/whitepapers-access", { SITE: site(), path: "/whitepapers/access", papers: null, error: null }));
-app.get("/leadership", (req, res) => res.render("pages/leadership", { SITE: site(), path: "/leadership" }));
-app.get("/terms", (req, res) => res.render("pages/terms", { SITE: site(), path: "/terms" }));
+/* Rate limiting */
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
-/* Invite submission (MySQL) */
+const accessLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const downloadLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use(generalLimiter);
+
+// SEO locals for every render
+app.use((req, res, next) => {
+  res.locals.SITE = site();
+  res.locals.SITE_URL = SITE_URL;
+  res.locals.path = req.path;
+  res.locals.META = null;
+  next();
+});
+
+// Noindex private routes
+app.use((req, res, next) => {
+  const p = req.path || "";
+  const isPrivate = p.startsWith("/admin") || p.startsWith("/download") || p.startsWith("/whitepapers/access");
+  if (isPrivate) {
+    res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+  }
+  next();
+});
+
+/* PUBLIC ROUTES */
+app.get("/", (req, res) => {
+  res.locals.META = {
+    title: "Atmakosh LLM — Principled Intelligence for High-Stakes Decisions",
+    description: "Atmakosh LLM is a Soul-Repository AI inspired by Indian philosophy, designed for ethical, restrained, and auditable reasoning. Invite-only preview opening shortly.",
+    canonical: `${SITE_URL}/`
+  };
+  res.render("pages/home");
+});
+
+app.get("/invite", (req, res) => {
+  res.locals.META = {
+    title: "Request Invitation — Atmakosh LLM",
+    description: "Request an invitation to the private preview of Atmakosh LLM. Built for principled, auditable decision intelligence.",
+    canonical: `${SITE_URL}/invite`
+  };
+  res.render("pages/invite");
+});
+
+app.get("/whitepapers", (req, res) => {
+  res.locals.META = {
+    title: "Whitepapers — Atmakosh LLM",
+    description: "Thought leadership and frameworks behind Atmakosh LLM: governance-first AI, decision systems, and principled alignment.",
+    canonical: `${SITE_URL}/whitepapers`
+  };
+  res.render("pages/whitepapers", { papers: PAPERS });
+});
+
+app.get("/whitepapers/access", accessLimiter, (req, res) => {
+  res.locals.META = {
+    title: "Access PDFs — Atmakosh LLM",
+    description: "Approved users can generate secure, expiring download links for Atmakosh LLM whitepapers.",
+    canonical: `${SITE_URL}/whitepapers/access`,
+    robots: "noindex,nofollow,noarchive"
+  };
+  res.render("pages/whitepapers-access", { papers: null, error: null });
+});
+
 app.post("/api/invite", async (req, res) => {
   try {
     await pool.execute(
       "INSERT INTO invites (name, email, intent, status) VALUES (?, ?, ?, 'pending')",
-      [req.body.name, req.body.email, req.body.intent]
+      [req.body.name, String(req.body.email || "").toLowerCase(), req.body.intent]
     );
+    await audit(req, "invite_submitted", { email: String(req.body.email || "").toLowerCase() });
     res.redirect("/invite");
   } catch (err) {
     console.error("Invite insert failed:", err.message);
@@ -131,11 +220,11 @@ app.post("/api/invite", async (req, res) => {
   }
 });
 
-/* Whitepaper access: generate expiring token links for approved users */
-app.post("/whitepapers/access", async (req, res) => {
+/* Generate expiring, one-time, IP/UA-bound token links */
+app.post("/whitepapers/access", accessLimiter, async (req, res) => {
   const email = String(req.body.email || "").trim().toLowerCase();
   if (!email) {
-    return res.render("pages/whitepapers-access", { SITE: site(), path: "/whitepapers/access", papers: null, error: "Please enter your email." });
+    return res.render("pages/whitepapers-access", { papers: null, error: "Please enter your email." });
   }
 
   const [inv] = await pool.execute(
@@ -145,46 +234,42 @@ app.post("/whitepapers/access", async (req, res) => {
 
   if (inv.length === 0) {
     return res.render("pages/whitepapers-access", {
-      SITE: site(),
-      path: "/whitepapers/access",
       papers: null,
       error: "Access not approved for this email yet. If you’ve requested an invite, please wait for approval."
     });
   }
 
+  const ip = getIP(req);
+  const ua = getUA(req);
+
+  // Cleanup old tokens for this email (optional hygiene)
+  try {
+    await pool.execute("DELETE FROM download_tokens WHERE email=? AND expires_at < NOW()", [email]);
+  } catch (e) {}
+
   const links = [];
-  const expiresMinutes = Number(process.env.PDF_TOKEN_MINUTES || 60);
+  const expiresAt = new Date(Date.now() + PDF_TOKEN_MINUTES * 60 * 1000);
+  const expiresSQL = expiresAt.toISOString().slice(0, 19).replace("T", " ");
 
   for (const p of PAPERS) {
     const token = crypto.randomBytes(24).toString("hex");
-    const expiresAt = new Date(Date.now() + expiresMinutes * 60 * 1000);
-    const expiresSQL = expiresAt.toISOString().slice(0, 19).replace("T", " ");
-
     await pool.execute(
-      "INSERT INTO download_tokens (email, paper, token, expires_at) VALUES (?, ?, ?, ?)",
-      [email, p.slug, token, expiresSQL]
+      "INSERT INTO download_tokens (email, paper, token, expires_at, ip, user_agent, used_at) VALUES (?, ?, ?, ?, ?, ?, NULL)",
+      [email, p.slug, token, expiresSQL, ip, ua]
     );
-
-    links.push({
-      title: p.title,
-      url: `${SITE_URL}/download/${token}`
-    });
+    links.push({ title: p.title, url: `${SITE_URL}/download/${token}` });
   }
 
-  // audit (token generation)
-  try {
-    await pool.execute(
-      "INSERT INTO audit_log (event, actor, ip, user_agent, meta) VALUES (?, ?, ?, ?, ?)",
-      ["pdf_token_issued", "system", getIP(req), getUA(req), JSON.stringify({ email })]
-    );
-  } catch (e) {}
+  await audit(req, "pdf_token_issued", { email });
 
-  res.render("pages/whitepapers-access", { SITE: site(), path: "/whitepapers/access", papers: links, error: null });
+  res.render("pages/whitepapers-access", { papers: links, error: null });
 });
 
-/* Secure PDF delivery by token */
-app.get("/download/:token", async (req, res) => {
+/* Secure PDF delivery: token must be valid, unexpired, unused, same IP+UA */
+app.get("/download/:token", downloadLimiter, async (req, res) => {
   const token = String(req.params.token || "").trim();
+  const ip = getIP(req);
+  const ua = getUA(req);
 
   const [rows] = await pool.execute(
     "SELECT * FROM download_tokens WHERE token=? LIMIT 1",
@@ -194,8 +279,16 @@ app.get("/download/:token", async (req, res) => {
   if (rows.length === 0) return res.status(403).send("Access denied");
 
   const row = rows[0];
+
+  if (row.used_at) return res.status(403).send("Link already used");
   const exp = new Date(row.expires_at);
   if (Date.now() > exp.getTime()) return res.status(403).send("Link expired");
+
+  // bind token to same IP & UA to reduce link sharing
+  if ((row.ip && row.ip !== ip) || (row.user_agent && row.user_agent !== ua)) {
+    await audit(req, "pdf_download_blocked_mismatch", { token, email: row.email, paper: row.paper });
+    return res.status(403).send("Access denied");
+  }
 
   const paper = PAPERS.find(p => p.slug === row.paper);
   if (!paper) return res.status(404).send("File not found");
@@ -203,52 +296,36 @@ app.get("/download/:token", async (req, res) => {
   const filePath = path.join(__dirname, "private", "pdfs", paper.file);
   if (!fs.existsSync(filePath)) return res.status(404).send("File not found");
 
-  // audit download
-  try {
-    await pool.execute(
-      "INSERT INTO audit_log (event, actor, ip, user_agent, meta) VALUES (?, ?, ?, ?, ?)",
-      ["pdf_download", "user", getIP(req), getUA(req), JSON.stringify({ email: row.email, paper: row.paper })]
-    );
-  } catch (e) {}
+  // mark token used (one-time)
+  await pool.execute(
+    "UPDATE download_tokens SET used_at=NOW() WHERE token=?",
+    [token]
+  );
+
+  await audit(req, "pdf_download", { email: row.email, paper: row.paper });
 
   res.download(filePath);
 });
 
-/* Admin */
+/* ADMIN */
 app.get("/admin", (req, res) => {
-  res.render("pages/admin-login", { SITE: site(), error: null });
+  res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+  res.render("pages/admin-login", { error: null });
 });
 
 app.post("/admin", async (req, res) => {
   if (req.body.password === ADMIN_PASSWORD) {
-    res.setHeader("Set-Cookie", `admin=${hash(ADMIN_PASSWORD)}; HttpOnly; Path=/`);
-    try {
-      await pool.execute(
-        "INSERT INTO audit_log (event, actor, ip, user_agent, meta) VALUES (?, ?, ?, ?, ?)",
-        ["admin_login", "admin", getIP(req), getUA(req), JSON.stringify({ ok: true })]
-      );
-    } catch (e) {}
+    res.setHeader("Set-Cookie", `admin=${hash(ADMIN_PASSWORD)}; HttpOnly; Path=/; SameSite=Lax`);
+    await audit(req, "admin_login", { ok: true });
     return res.redirect("/admin/invites");
   }
-
-  try {
-    await pool.execute(
-      "INSERT INTO audit_log (event, actor, ip, user_agent, meta) VALUES (?, ?, ?, ?, ?)",
-      ["admin_login_failed", "admin", getIP(req), getUA(req), JSON.stringify({ ok: false })]
-    );
-  } catch (e) {}
-
-  res.render("pages/admin-login", { SITE: site(), error: "Invalid password" });
+  await audit(req, "admin_login_failed", { ok: false });
+  res.render("pages/admin-login", { error: "Invalid password" });
 });
 
 app.get("/admin/logout", async (req, res) => {
-  res.setHeader("Set-Cookie", "admin=; HttpOnly; Path=/; Max-Age=0");
-  try {
-    await pool.execute(
-      "INSERT INTO audit_log (event, actor, ip, user_agent, meta) VALUES (?, ?, ?, ?, ?)",
-      ["admin_logout", "admin", getIP(req), getUA(req), JSON.stringify({})]
-    );
-  } catch (e) {}
+  res.setHeader("Set-Cookie", "admin=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
+  await audit(req, "admin_logout", {});
   res.redirect("/");
 });
 
@@ -259,23 +336,20 @@ app.get("/admin/invites", async (req, res) => {
     "SELECT * FROM invites ORDER BY created_at DESC"
   );
 
-  res.render("pages/admin-invites", { SITE: site(), path: "/admin/invites", rows });
+  res.render("pages/admin-invites", { rows });
 });
 
-/* Approval actions + email notification + audit */
+/* Approval actions + email notification */
 app.post("/admin/invite/:id/approve", async (req, res) => {
   if (!isAdmin(req)) return res.redirect("/admin");
 
   const id = req.params.id;
-
   const [rows] = await pool.execute("SELECT * FROM invites WHERE id=? LIMIT 1", [id]);
   if (rows.length === 0) return res.redirect("/admin/invites");
 
   await pool.execute("UPDATE invites SET status='approved' WHERE id=?", [id]);
-
   await audit(req, "invite_approved", { id, email: rows[0].email });
 
-  // email notification
   await sendApprovalEmail(rows[0].email);
 
   res.redirect("/admin/invites");
@@ -294,24 +368,32 @@ app.post("/admin/invite/:id/reject", async (req, res) => {
   res.redirect("/admin/invites");
 });
 
-/* Health check + uptime monitoring */
+/* SITEMAP (SEO) - only public pages */
+app.get("/sitemap.xml", (req, res) => {
+  const urls = [
+    `${SITE_URL}/`,
+    `${SITE_URL}/invite`,
+    `${SITE_URL}/whitepapers`,
+    `${SITE_URL}/leadership`,
+    `${SITE_URL}/terms`
+  ];
+
+  const xml =
+`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map(u => `<url><loc>${u}</loc></url>`).join("\n")}
+</urlset>`;
+
+  res.type("application/xml").send(xml);
+});
+
+/* Health check (uptime monitoring) */
 app.get("/healthz", async (req, res) => {
   try {
     await pool.query("SELECT 1");
-    res.json({
-      ok: true,
-      service: "atmakosh-llm-site",
-      db: "ok",
-      ts: new Date().toISOString()
-    });
+    res.json({ ok: true, service: "atmakosh-llm-site", db: "ok", ts: new Date().toISOString() });
   } catch (e) {
-    res.status(500).json({
-      ok: false,
-      service: "atmakosh-llm-site",
-      db: "down",
-      error: e.message,
-      ts: new Date().toISOString()
-    });
+    res.status(500).json({ ok: false, service: "atmakosh-llm-site", db: "down", error: e.message, ts: new Date().toISOString() });
   }
 });
 

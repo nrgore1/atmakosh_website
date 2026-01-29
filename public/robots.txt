@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /admin
+Disallow: /download
+Disallow: /whitepapers/access
+
+Sitemap: /sitemap.xml
