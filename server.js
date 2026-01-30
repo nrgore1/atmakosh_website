@@ -713,3 +713,17 @@ app.get("/whitepaper-vision", (req, res) => {
   res.render("pages/whitepaper-vision");
 });
 
+
+app.get("/leadership", (req, res) => {
+  res.locals.META = {
+    title: "Leadership — Atmakosh LLM",
+    description:
+      "Leadership and founding vision behind Atmakosh LLM — principled, governance-first artificial intelligence.",
+    canonical: `${SITE_URL}/leadership`,
+  };
+  res.render("pages/leadership");
+});
+
+
+app.get("/team", (req, res) => res.redirect(301, "/leadership"));
+
