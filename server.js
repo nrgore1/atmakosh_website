@@ -323,36 +323,32 @@ app.get("/whitepapers/access", accessLimiter, (req, res) => {
 });
 
 app.post("/api/invite", async (req, res) => {
-  try {
-    const name = String(req.body.name || "").trim();
-    const email = String(req.body.email || "").trim().toLowerCase();
-    const intent = String(req.body.intent || "").trim();
-    const score = scoreInvite(intent);
+  const name = String(req.body.name || "").trim() || null;
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const intent = String(req.body.intent || "").trim() || null;
+  const score = scoreInvite(intent);
 
-    if (!email) return res.status(400).send("Email is required");
-
-    // Prefer inserting score if your schema has it; fall back if not.
-    try {
-      await pool.execute(
-        "INSERT INTO invites (name, email, intent, status, score) VALUES (?, ?, ?, 'pending', ?)",
-        [name, email, intent, score]
-      );
-    } catch (e) {
-      // Older schema without 'score'
-      await pool.execute(
-        "INSERT INTO invites (name, email, intent, status) VALUES (?, ?, ?, 'pending')",
-        [name, email, intent]
-      );
-    }
-
-    await audit(req, "invite_submitted", { email });
-    await sendInviteReceivedEmail(name, email);
-
-    res.redirect("/invite?submitted=1");
-  } catch (err) {
-    console.error("Invite insert failed:", err.message);
-    res.status(500).send("Unable to process invite request");
+  if (!email) {
+    return res.status(400).send("Email is required");
   }
+
+  try {
+    await pool.execute(
+      "INSERT INTO invites (name, email, intent, status, score) VALUES (?, ?, ?, 'pending', ?)",
+      [name, email, intent, score]
+    );
+  } catch (e) {
+    if (e.code === "ER_DUP_ENTRY") {
+      return res.redirect("/invite?duplicate=1");
+    }
+    throw e;
+  }
+
+  // Non-blocking side effects
+  try { await audit(req, "invite_submitted", { email }); } catch {}
+  try { await sendInviteReceivedEmail(name, email); } catch {}
+
+  return res.redirect("/invite?submitted=1");
 });
 
 /* Generate expiring, one-time, IP/UA-bound token links */
@@ -768,38 +764,38 @@ app.use((req, res) => {
 /* ======================
    INVITE REQUEST API
 ====================== */
-app.post("/api/invite", async (req, res) => {
-  try {
-    const name = String(req.body.name || "").trim() || null;
-    const email = String(req.body.email || "").trim().toLowerCase();
-    const intent = String(req.body.intent || "").trim() || null;
-    const score = scoreInvite(intent);
 
-    if (!email) {
-      return res.status(400).send("Email is required");
-    }
 
-    try {
-      await pool.execute(
-        "INSERT INTO invites (name, email, intent, status, score) VALUES (?, ?, ?, 'pending', ?)",
-        [name, email, intent, score]
-      );
-    } catch (e) {
-      if (e && e.code === "ER_DUP_ENTRY") {
-        // Duplicate invite attempt
-        await audit(req, "invite_duplicate", { email, name });
-        return res.redirect("/invite?duplicate=1");
-      }
-      throw e;
-    }
+/* ======================
+   INVITE ERROR DIAGNOSTICS
+====================== */
+function logInviteError(err) {
+  console.error("INVITE ERROR OCCURRED");
+  if (!err) return;
 
-    await audit(req, "invite_submitted", { email });
-    await sendInviteReceivedEmail(name, email);
+  console.error("TYPE:", typeof err);
+  console.error("MESSAGE:", err.message);
+  console.error("CODE:", err.code);
+  console.error("ERRNO:", err.errno);
+  console.error("SQL MESSAGE:", err.sqlMessage);
+  console.error("STACK:", err.stack);
+}
 
-    res.redirect("/invite?submitted=1");
-  } catch (err) {
-    console.error("Invite insert failed:", err.message);
-    res.status(500).send("Unable to process invite request");
-  }
-});
+
+/* ======================
+   INVITE ERROR DIAGNOSTICS
+====================== */
+function logInviteError(err) {
+  console.error("INVITE ERROR OCCURRED");
+  if (!err) return;
+
+  console.error("TYPE:", typeof err);
+  console.error("MESSAGE:", err.message);
+  console.error("CODE:", err.code);
+  console.error("ERRNO:", err.errno);
+  console.error("SQL MESSAGE:", err.sqlMessage);
+  console.error("STACK:", err.stack);
+}
+
+
 
