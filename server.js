@@ -741,3 +741,26 @@ app.get("/terms", (req, res) => {
 
 app.get("/terms-of-use", (req, res) => res.redirect(301, "/terms"));
 
+
+/* ======================
+   Link safety redirects
+====================== */
+
+app.get("/why", (req, res) => res.redirect(301, "/why-atmakosh"));
+app.get("/about", (req, res) => res.redirect(301, "/why-atmakosh"));
+
+app.get("/team", (req, res) => res.redirect(301, "/leadership"));
+
+app.get("/vision", (req, res) => res.redirect(301, "/whitepaper-vision"));
+
+app.get("/terms-of-use", (req, res) => res.redirect(301, "/terms"));
+
+
+/* ======================
+   404 handler (must be last)
+====================== */
+app.use((req, res) => {
+  res.status(404);
+  res.render("pages/404");
+});
+
