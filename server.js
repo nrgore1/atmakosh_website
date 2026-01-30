@@ -697,3 +697,19 @@ app.get("/why-atmakosh", (req, res) => {
   res.render("pages/why-atmakosh");
 });
 
+
+app.get("/whitepaper-vision", (req, res) => {
+  res.redirect(301, "/whitepapers");
+});
+
+
+app.get("/whitepaper-vision", (req, res) => {
+  res.locals.META = {
+    title: "Whitepaper Vision — Atmakosh LLM",
+    description:
+      "The vision behind Atmakosh whitepapers: governance-first AI, ethical reasoning, and accountable decision systems.",
+    canonical: `${SITE_URL}/whitepaper-vision`,
+  };
+  res.render("pages/whitepaper-vision");
+});
+
