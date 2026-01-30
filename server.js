@@ -686,3 +686,14 @@ app.get("/debug/db-info", async (req, res) => {
     res.status(500).json({ ok: false });
   }
 });
+
+app.get("/why-atmakosh", (req, res) => {
+  res.locals.META = {
+    title: "Why Atmakosh — Thoughtful, Governed AI",
+    description:
+      "Why Atmakosh exists: a governance-first, explainable AI system built for high-stakes decisions.",
+    canonical: `${SITE_URL}/why-atmakosh`,
+  };
+  res.render("pages/why-atmakosh");
+});
+
