@@ -727,3 +727,17 @@ app.get("/leadership", (req, res) => {
 
 app.get("/team", (req, res) => res.redirect(301, "/leadership"));
 
+
+app.get("/terms", (req, res) => {
+  res.locals.META = {
+    title: "Terms of Use — Atmakosh LLM",
+    description:
+      "Terms of use and legal conditions governing access to the Atmakosh LLM website and preview materials.",
+    canonical: `${SITE_URL}/terms`,
+  };
+  res.render("pages/terms");
+});
+
+
+app.get("/terms-of-use", (req, res) => res.redirect(301, "/terms"));
+
