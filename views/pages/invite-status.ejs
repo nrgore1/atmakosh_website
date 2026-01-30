@@ -1,0 +1,52 @@
+<%- include('../partials/head', { SITE }) %>
+<%- include('../partials/nav', { SITE, path }) %>
+
+<section class="section" style="max-width:640px;">
+  <h1>Check Invitation Status</h1>
+
+  <p class="lead">
+    Enter the email address you used when requesting an invitation to Atmakosh LLM.
+  </p>
+
+  <% if (error) { %>
+    <div class="note note--error"><%= error %></div>
+  <% } %>
+
+  <% if (result) { %>
+    <div class="note note--success">
+      <h3>Status: <%= result.status.toUpperCase() %></h3>
+
+      <% if (result.status === 'pending') { %>
+        <p>Your request is currently under review.</p>
+      <% } %>
+
+      <% if (result.status === 'approved') { %>
+        <p>
+          Your request has been approved.
+          Please check your email for access instructions.
+        </p>
+      <% } %>
+
+      <% if (result.status === 'rejected') { %>
+        <p>
+          Your request was not selected for this preview.
+          Thank you for your interest.
+        </p>
+      <% } %>
+
+      <p class="muted">
+        Submitted on <%= new Date(result.created_at).toDateString() %>
+      </p>
+    </div>
+  <% } else { %>
+    <form method="POST" action="/invite/status">
+      <label>
+        <span>Email</span>
+        <input type="email" name="email" required />
+      </label>
+      <button class="btn btn--primary">Check Status</button>
+    </form>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>

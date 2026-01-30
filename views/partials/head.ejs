@@ -4,9 +4,32 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <title><%= SITE.name %> — <%= SITE.tagline %></title>
+  <% const TITLE = (META && META.title) ? META.title : `${SITE.name} — ${SITE.tagline}`; %>
+  <% const DESC  = (META && META.description) ? META.description : "Atmakosh LLM is a Soul-Repository AI built for ethical, restrained, and auditable reasoning in high-stakes environments."; %>
+  <% const CANON = (META && META.canonical) ? META.canonical : (SITE_URL ? `${SITE_URL}${path || '/'}` : (path || '/')); %>
+  <% const OGIMG = (META && META.ogImage) ? META.ogImage : (SITE_URL ? `${SITE_URL}/og.png` : "/og.png"); %>
 
-  <meta name="description" content="Atmakosh LLM — a governance-first, philosophy-rooted large language model." />
+  <title><%= TITLE %></title>
+  <meta name="description" content="<%= DESC %>" />
+  <link rel="canonical" href="<%= CANON %>" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="<%= TITLE %>" />
+  <meta property="og:description" content="<%= DESC %>" />
+  <meta property="og:url" content="<%= CANON %>" />
+  <meta property="og:image" content="<%= OGIMG %>" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="<%= TITLE %>" />
+  <meta name="twitter:description" content="<%= DESC %>" />
+  <meta name="twitter:image" content="<%= OGIMG %>" />
+
+  <!-- Robots (page-level) -->
+  <% if (META && META.robots) { %>
+    <meta name="robots" content="<%= META.robots %>">
+  <% } %>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,6 +37,31 @@
 
   <link rel="stylesheet" href="/styles.css" />
   <script defer src="/app.js"></script>
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  <%- JSON.stringify({
+    "@context":"https://schema.org",
+    "@type":"Organization",
+    "name": SITE.name,
+    "url": SITE_URL || "",
+    "sameAs": ["https://www.linkedin.com/in/narendra-gore/"]
+  }) %>
+  </script>
+
+  <script type="application/ld+json">
+  <%- JSON.stringify({
+    "@context":"https://schema.org",
+    "@type":"WebSite",
+    "name": SITE.name,
+    "url": SITE_URL || "",
+    "potentialAction": {
+      "@type":"SearchAction",
+      "target": (SITE_URL ? SITE_URL : "") + "/?q={search_term_string}",
+      "query-input":"required name=search_term_string"
+    }
+  }) %>
+  </script>
 </head>
 <body>
 

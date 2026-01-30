@@ -1,0 +1,22 @@
+Replace /debug/db-write handler with:
+
+app.get("/debug/db-write", async (req, res) => {
+  try {
+    await pool.query("START TRANSACTION");
+    await pool.query(
+      "INSERT INTO invites (name, email, intent, status) VALUES ('test', 'test@example.com', 'test', 'pending')"
+    );
+    await pool.query("ROLLBACK");
+    res.json({ ok: true, write: "ok" });
+  } catch (e) {
+    console.error("DB WRITE FAILED");
+    console.error("CODE:", e.code);
+    console.error("ERRNO:", e.errno);
+    console.error("SQL:", e.sqlMessage);
+    res.status(500).json({
+      ok: false,
+      code: e.code,
+      message: e.sqlMessage
+    });
+  }
+});

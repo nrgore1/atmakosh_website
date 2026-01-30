@@ -1,0 +1,10 @@
+In POST /api/invite, update the INSERT catch block:
+
+Add:
+
+if (e && e.code === "ER_DUP_ENTRY") {
+  await audit(req, "invite_duplicate", { email });
+  return res.redirect("/invite?duplicate=1");
+}
+
+Re-throw other errors.

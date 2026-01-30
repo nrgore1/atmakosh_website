@@ -2,29 +2,39 @@
 <%- include('../partials/nav', { SITE, path }) %>
 
 <section class="section">
-  <div style="display:flex; justify-content:space-between; align-items:center;">
-    <h1>Invite Requests</h1>
-    <a href="/admin/logout" class="btn btn--ghost">Logout</a>
-  </div>
+  <h1>Invitations</h1>
 
-  <p class="lead">
-    Review incoming requests for the Atmakosh LLM invite-only preview.
-  </p>
-
-  <div class="admin-table">
-    <% if (rows.length === 0) { %>
-      <p class="muted">No invite requests yet.</p>
-    <% } %>
-
-    <% rows.forEach(r => { %>
-      <div class="admin-row">
-        <div><strong>Name:</strong> <%= r.name %></div>
-        <div><strong>Email:</strong> <%= r.email %></div>
-        <div><strong>Intent:</strong><br/><%= r.intent %></div>
-        <div class="muted small"><%= r.ts %></div>
-      </div>
-    <% }) %>
-  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Status</th>
+        <th>Score</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% rows.forEach(r => { %>
+        <tr>
+          <td><%= r.name %></td>
+          <td><%= r.email %></td>
+          <td><%= r.status %></td>
+          <td><%= r.score %></td>
+          <td>
+            <% if (r.status === 'pending') { %>
+              <form method="POST" action="/admin/invite/<%= r.id %>/approve" style="display:inline;">
+                <button>Approve</button>
+              </form>
+              <form method="POST" action="/admin/invite/<%= r.id %>/reject" style="display:inline;">
+                <button>Reject</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
 </section>
 
 <%- include('../partials/footer') %>

@@ -1,0 +1,15 @@
+In POST /api/invite, locate the existing INSERT try/catch.
+
+REPLACE the existing catch block with the following:
+
+} catch (e) {
+  if (e && e.code === "ER_DUP_ENTRY") {
+    // Duplicate invite: do not insert again
+    await audit(req, "invite_duplicate", { email });
+    return res.redirect("/invite?duplicate=1");
+  }
+
+  throw e; // real errors still bubble
+}
+
+Do not modify any other logic.

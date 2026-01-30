@@ -1,0 +1,39 @@
+<%- include('../partials/head', { SITE }) %>
+<%- include('../partials/nav', { SITE, path }) %>
+
+<section class="section" style="max-width:680px;">
+  <h1>Access Whitepaper PDFs</h1>
+
+  <p class="lead">
+    Enter the same email you used for your invite request. If your access is approved,
+    we’ll generate secure, expiring download links.
+  </p>
+
+  <% if (error) { %>
+    <div class="note"><strong>Notice:</strong> <%= error %></div>
+  <% } %>
+
+  <form method="POST" action="/whitepapers/access" class="invite-form" style="margin-top:22px;">
+    <label>
+      <span>Email</span>
+      <input type="email" name="email" placeholder="you@organization.com" required />
+    </label>
+    <button class="btn btn--primary" type="submit">Generate Secure Links</button>
+  </form>
+
+  <% if (papers && papers.length) { %>
+    <div class="section" style="margin-top:34px;">
+      <h2>Your secure links</h2>
+      <p class="muted">Links expire automatically. Please download what you need within the allowed time window.</p>
+
+      <% papers.forEach(p => { %>
+        <div class="card" style="margin-top:14px;">
+          <strong><%= p.title %></strong><br/>
+          <a class="btn btn--ghost" href="<%= p.url %>" style="margin-top:10px;">Download PDF</a>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>
