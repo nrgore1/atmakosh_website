@@ -182,3 +182,166 @@ h1{
 .small{
   font-size:12px;
 }
+
+/* Success confirmation note */
+.note--success {
+  background: rgba(70, 120, 255, 0.12);
+  border-left: 4px solid #4f6dff;
+  padding: 14px 16px;
+  margin: 18px 0;
+  border-radius: 6px;
+  color: #1f2a44;
+}
+
+.note--success {
+  background: rgba(70, 120, 255, 0.15);
+  border-left: 4px solid #4f6dff;
+  padding: 18px 20px;
+  border-radius: 8px;
+}
+.note--success h3 {
+  margin-top: 0;
+}
+.note--success ul {
+  margin-left: 20px;
+}
+
+/* Improved visibility for invite confirmation */
+.note--success {
+  background: linear-gradient(
+    180deg,
+    rgba(40, 80, 200, 0.35),
+    rgba(20, 40, 120, 0.35)
+  );
+  border-left: 4px solid #6f8cff;
+  border-radius: 10px;
+  padding: 22px 26px;
+  margin-top: 24px;
+  box-shadow:
+    0 0 0 1px rgba(120, 150, 255, 0.25),
+    0 20px 60px rgba(0, 0, 0, 0.35);
+  color: #eaf0ff;
+}
+
+/* Heading clarity */
+.note--success h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1.35rem;
+  color: #ffffff;
+}
+
+/* Body text */
+.note--success p,
+.note--success li {
+  color: #dce6ff;
+  line-height: 1.6;
+}
+
+/* List spacing */
+.note--success ul {
+  margin: 12px 0 12px 20px;
+}
+
+/* Muted helper text */
+.note--success .muted {
+  color: #b9c7ff;
+  font-size: 0.95rem;
+}
+
+/* Back to Home link */
+.note--success .btn--secondary {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 10px 18px;
+  background: rgba(120, 150, 255, 0.2);
+  border: 1px solid rgba(120, 150, 255, 0.45);
+  border-radius: 8px;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.note--success .btn--secondary:hover {
+  background: rgba(120, 150, 255, 0.35);
+}
+
+
+/* Invite confirmation focus effect */
+.invite--confirmed {
+  position: relative;
+}
+
+.invite--confirmed::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 10, 30, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 0;
+}
+
+/* Confirmation card animation */
+.invite-confirm-card {
+  position: relative;
+  z-index: 1;
+  animation: inviteFadeUp 520ms ease-out both;
+}
+
+@keyframes inviteFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Checkmark seal */
+.invite-seal {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(120, 150, 255, 0.25);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  box-shadow: 0 0 0 1px rgba(140, 170, 255, 0.45);
+}
+
+/* Timeline */
+.invite-next-title {
+  margin-top: 18px;
+  margin-bottom: 8px;
+  font-size: 1.05rem;
+  color: #ffffff;
+}
+
+.invite-timeline {
+  list-style: none;
+  padding-left: 0;
+  margin: 10px 0 14px 0;
+}
+
+.invite-timeline li {
+  position: relative;
+  padding-left: 22px;
+  margin-bottom: 8px;
+  color: #dce6ff;
+}
+
+.invite-timeline li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #8fa4ff;
+}
+
+/* Ensure confirmation card stays readable */
+.invite-confirm-card * {
+  text-shadow: 0 1px 1px rgba(0,0,0,0.25);
+}
+

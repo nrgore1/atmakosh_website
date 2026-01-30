@@ -1,0 +1,26 @@
+<%- include('../partials/head', { SITE }) %>
+<%- include('../partials/nav', { SITE, path }) %>
+
+<section class="section" style="max-width:900px;">
+  <h1>Email Templates</h1>
+
+  <% rows.forEach(t => { %>
+    <form method="POST" action="/admin/email-templates/<%= t.name %>" class="card">
+      <h3><%= t.name %></h3>
+
+      <label>
+        <span>Subject</span>
+        <input type="text" name="subject" value="<%= t.subject %>" />
+      </label>
+
+      <label>
+        <span>Body (text)</span>
+        <textarea name="body_text" rows="6"><%= t.body_text %></textarea>
+      </label>
+
+      <button class="btn btn--primary">Save</button>
+    </form>
+  <% }) %>
+</section>
+
+<%- include('../partials/footer') %>

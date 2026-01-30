@@ -1,0 +1,15 @@
+<%- include('../partials/head', { SITE }) %>
+<%- include('../partials/nav', { SITE, path }) %>
+
+<section class="section" style="max-width:720px;">
+  <h1>Invite Analytics</h1>
+
+  <div class="card">
+    <p><strong>Total requests:</strong> <%= counts.total %></p>
+    <p><strong>Pending:</strong> <%= counts.pending %></p>
+    <p><strong>Approved:</strong> <%= counts.approved %></p>
+    <p><strong>Rejected:</strong> <%= counts.rejected %></p>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

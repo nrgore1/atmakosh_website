@@ -1,0 +1,7 @@
+Replace in POST /admin handler:
+
+FROM:
+res.setHeader("Set-Cookie", `admin=${hash(ADMIN_PASSWORD)}; HttpOnly; Path=/; SameSite=Lax`);
+
+TO:
+res.setHeader("Set-Cookie", adminCookie(req));

@@ -1,57 +1,98 @@
 <%- include('../partials/head', { SITE }) %>
 <%- include('../partials/nav', { SITE, path }) %>
 
-<section class="section">
-  <div class="kicker">Invitation Only</div>
-
-  <h1>Enter the private preview</h1>
+<section class="section invite-section <%= (query && query.submitted) ? 'invite--confirmed' : '' %>" style="max-width:760px;">
+  <h1>Request an Invitation</h1>
 
   <p class="lead">
-    Atmakosh LLM will be opening shortly for an invite-only preview.
-    We are inviting a limited group of leaders, builders, and institutions.
+    Atmakosh LLM is opening in a private, invite-only preview.
+    Share how you intend to apply principled intelligence in your work.
   </p>
 
-  <div class="invite-wrapper">
-    <form method="POST" action="/api/invite" class="invite-form">
+  <% if (query && query.submitted) { %>
+    <!-- CONFIRMATION STATE -->
+    <div class="note note--success invite-confirm-card">
 
+      <!-- Checkmark seal -->
+      <div class="invite-seal">
+        <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+          <path fill="currentColor"
+            d="M9.0 16.2l-3.5-3.5 1.4-1.4 2.1 2.1 5.3-5.3 1.4 1.4z"/>
+        </svg>
+      </div>
+
+      <h3>Thank you — your request has been received</h3>
+
+      <p>
+        We’ve added your name and email to the Atmakosh LLM invitation registry.
+      </p>
+
+      <p>
+        Your request is now <strong>under review</strong>.
+        Our team evaluates applications on a rolling basis.
+      </p>
+
+      <h4 class="invite-next-title">What happens next</h4>
+
+      <ol class="invite-timeline">
+        <li>We review your request for alignment and intent</li>
+        <li>Selected participants receive an approval email</li>
+        <li>Approved users gain access to whitepapers and the Atmakosh LLM preview</li>
+      </ol>
+
+      <p class="muted">
+        No further action is required at this time.
+      </p>
+
+      <div style="margin-top:22px;">
+        <a href="/" class="btn btn--secondary">Back to Home</a>
+      </div>
+    </div>
+
+    <!-- Analytics event -->
+    <script>
+      window.dispatchEvent(new CustomEvent("invite_confirmed_view", {
+        detail: { source: "invite_confirmation_page" }
+      }));
+    </script>
+
+  <% } else { %>
+    <!-- FORM STATE -->
+    <form method="POST" action="/api/invite" class="invite-form" id="invite-form">
       <label>
         <span>Name</span>
-        <input
-          type="text"
-          name="name"
-          placeholder="Your full name"
-          required
-        />
+        <input type="text" name="name" required />
       </label>
 
       <label>
         <span>Email</span>
-        <input
-          type="email"
-          name="email"
-          placeholder="you@organization.com"
-          required
-        />
+        <input type="email" name="email" required />
       </label>
 
       <label>
-        <span>
-          How will you apply Atmakosh’s wisdom in your work?
-        </span>
-        <textarea
-          name="intent"
-          rows="5"
-          placeholder="Describe your role, domain, and the decisions you are responsible for."
-          required
-        ></textarea>
+        <span>How do you intend to apply Atmakosh’s wisdom?</span>
+        <textarea name="intent" rows="5" required></textarea>
       </label>
 
-      <button type="submit" class="btn btn--primary">
+      <button type="submit" class="btn btn--primary" id="invite-submit">
         Request Invitation
       </button>
-
     </form>
-  </div>
+
+    <!-- Prevent double submission -->
+    <script>
+      (function () {
+        const form = document.getElementById("invite-form");
+        const btn = document.getElementById("invite-submit");
+        if (!form || !btn) return;
+
+        form.addEventListener("submit", function () {
+          btn.disabled = true;
+          btn.innerText = "Submitting…";
+        });
+      })();
+    </script>
+  <% } %>
 </section>
 
 <%- include('../partials/footer') %>

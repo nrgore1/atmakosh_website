@@ -2,31 +2,39 @@
 <%- include('../partials/nav', { SITE, path }) %>
 
 <section class="section">
-  <div style="display:flex;justify-content:space-between;align-items:center;">
-    <h1>Invite Requests</h1>
-    <a href="/admin/logout" class="btn btn--ghost">Logout</a>
-  </div>
+  <h1>Invitations</h1>
 
-  <p class="lead">Approve or reject invite requests. Approvals trigger an email with the whitepapers access link.</p>
-
-  <% rows.forEach(r => { %>
-    <div class="admin-row">
-      <div><strong><%= r.name %></strong> — <%= r.email %></div>
-      <div class="muted small">Status: <strong><%= r.status %></strong> • <%= r.created_at %></div>
-      <div style="margin-top:10px;"><%= r.intent %></div>
-
-      <% if (r.status === 'pending') { %>
-        <div style="margin-top:14px;">
-          <form method="POST" action="/admin/invite/<%= r.id %>/approve" style="display:inline;">
-            <button class="btn btn--primary" type="submit">Approve</button>
-          </form>
-          <form method="POST" action="/admin/invite/<%= r.id %>/reject" style="display:inline;margin-left:10px;">
-            <button class="btn btn--ghost" type="submit">Reject</button>
-          </form>
-        </div>
-      <% } %>
-    </div>
-  <% }) %>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Status</th>
+        <th>Score</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% rows.forEach(r => { %>
+        <tr>
+          <td><%= r.name %></td>
+          <td><%= r.email %></td>
+          <td><%= r.status %></td>
+          <td><%= r.score %></td>
+          <td>
+            <% if (r.status === 'pending') { %>
+              <form method="POST" action="/admin/invite/<%= r.id %>/approve" style="display:inline;">
+                <button>Approve</button>
+              </form>
+              <form method="POST" action="/admin/invite/<%= r.id %>/reject" style="display:inline;">
+                <button>Reject</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
 </section>
 
 <%- include('../partials/footer') %>
