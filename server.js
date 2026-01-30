@@ -672,3 +672,17 @@ app.get("/debug/db", async (req, res) => {
     res.status(500).json({ ok: false });
   }
 });
+
+app.get("/debug/db-info", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT DATABASE() AS db, USER() AS user");
+    res.json({
+      ok: true,
+      database: rows[0].db,
+      user: rows[0].user
+    });
+  } catch (e) {
+    console.error("DB INFO FAILED:", e.code, e.sqlMessage);
+    res.status(500).json({ ok: false });
+  }
+});
