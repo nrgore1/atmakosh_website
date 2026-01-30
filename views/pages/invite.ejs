@@ -93,6 +93,13 @@
       })();
     </script>
   <% } %>
+  
+  <% if (query && query.duplicate) { %>
+  <div class="notice">
+    An invitation request for this email already exists.
+    If it’s approved, you’ll receive an email.
+  </div>
+<% } %>
 </section>
 
 <%- include('../partials/footer') %>
