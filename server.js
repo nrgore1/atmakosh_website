@@ -662,3 +662,13 @@ function adminCookie(req) {
   const secure = req.secure ? "; Secure" : "";
   return `admin=${hash(ADMIN_PASSWORD)}; HttpOnly; Path=/; SameSite=Lax${secure}`;
 }
+
+app.get("/debug/db", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ ok: true });
+  } catch (e) {
+    logProdError("DB health check failed", e);
+    res.status(500).json({ ok: false });
+  }
+});
