@@ -11,7 +11,7 @@ const rateLimit = require("express-rate-limit");
 const pool = require("./db");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "changeme";
 const SITE_URL = (process.env.SITE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
