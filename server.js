@@ -56,6 +56,22 @@ app.use((req, res, next) => {
   next();
 });
 
+/* --- DIAGNOSTIC ROUTE (Temporary) --- */
+app.get("/admin/debug-env", (req, res) => {
+  const envKeys = Object.keys(process.env).sort();
+  const pass = process.env.ADMIN_PASSWORD;
+  
+  res.json({
+    status: "diagnostics",
+    admin_password_found: !!pass,
+    admin_password_length: pass ? pass.length : 0,
+    admin_password_preview: pass ? pass.substring(0, 2) + "***" : "N/A",
+    current_active_password_length: ADMIN_PASSWORD.length,
+    is_using_changeme: ADMIN_PASSWORD === "changeme",
+    available_env_keys: envKeys // Check if ADMIN_PASSWORD is in this list!
+  });
+});
+
 /* --- FILE DATABASE HELPERS --- */
 
 // Read Append-Only Logs (NDJSON) - Used for Invites, Audit, Tokens
