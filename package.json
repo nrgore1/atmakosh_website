@@ -1,11 +1,12 @@
 {
   "name": "atmakosh-llm-site",
   "version": "1.0.0",
-  "description": "Atmakosh LLM teaser site (Express + EJS) with invite-only signup capture.",
+  "description": "Atmakosh LLM teaser site (Express + EJS)",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "echo 'No build step required for Express' && exit 0"
   },
   "engines": {
     "node": ">=18"

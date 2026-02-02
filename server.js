@@ -42,7 +42,12 @@ if (fs.existsSync(SECRET_FILE)) {
 }
 
 const ADMIN_PASSWORD = loadedPassword;
+
+// FIX: Auto-detects Prod vs Local.
+// If SITE_URL is in .env (Hostinger), it uses it. If not (Local), it uses localhost.
 const SITE_URL = (process.env.SITE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
+console.log(`System Startup: Public Access URL set to: ${SITE_URL}`);
+
 // 24 Hours in minutes
 const PDF_TOKEN_MINUTES = 1440; 
 
@@ -123,7 +128,7 @@ function healData() {
   const records = readNDJSON(INVITES_FILE);
   let changed = false;
   const fixed = records.map(r => {
-    if (!r.id) { r.id = generateId(); changed = true; } // Assign ID if missing
+    if (!r.id) { r.id = generateId(); changed = true; } 
     return r;
   });
   if (changed) {
@@ -611,7 +616,7 @@ ${urls.map(u => `<url><loc>${u}</loc></url>`).join("\n")}
 app.get("/healthz", (req, res) => {
   try {
     fs.accessSync(DATA_DIR, fs.constants.W_OK);
-    res.json({ ok: true, service: "atmakosh-llm-site", storage: "writable",QK: true, ts: new Date().toISOString() });
+    res.json({ ok: true, service: "atmakosh-llm-site", storage: "writable", ts: new Date().toISOString() });
   } catch (e) {
     res.status(500).json({ ok: false, error: "Storage Read-only", ts: new Date().toISOString() });
   }
