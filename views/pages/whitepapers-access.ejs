@@ -5,12 +5,20 @@
   <h1>Access Whitepaper PDFs</h1>
 
   <p class="lead">
-    Enter the same email you used for your invite request. If your access is approved,
-    we’ll generate secure, expiring download links.
+    Enter the same email you used for your invite request.
+    If your access is approved, we’ll generate secure, expiring download links.
   </p>
 
   <% if (error) { %>
-    <div class="note"><strong>Notice:</strong> <%= error %></div>
+    <div class="note" style="color: #ef4444; background: rgba(239,68,68,0.1); border-left: 3px solid #ef4444; padding: 12px;">
+      <strong>Error:</strong> <%= error %>
+    </div>
+  <% } %>
+
+  <% if (locals.notice) { %>
+    <div class="note" style="color: #f59e0b; background: rgba(245,158,11,0.1); border-left: 3px solid #f59e0b; padding: 12px; margin-bottom: 20px;">
+      <strong><%= notice %></strong>
+    </div>
   <% } %>
 
   <form method="POST" action="/whitepapers/access" class="invite-form" style="margin-top:22px;">

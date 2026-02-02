@@ -8,9 +8,6 @@ const nodemailer = require("nodemailer");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
-// DATABASE REPLACED WITH FILE SYSTEM
-// const pool = require("./db"); 
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -23,12 +20,12 @@ const INVITES_FILE = path.join(DATA_DIR, "invites.ndjson");
 const TOKENS_FILE = path.join(DATA_DIR, "tokens.ndjson");
 const AUDIT_FILE = path.join(DATA_DIR, "audit.ndjson");
 const TEMPLATES_FILE = path.join(DATA_DIR, "email_templates.json");
+const PAPERS_CONFIG_FILE = path.join(DATA_DIR, "papers_config.json");
 const SECRET_FILE = path.join(DATA_DIR, "admin_secret.txt");
 
 /* --- CONFIG: ROBUST PASSWORD LOADING --- */
 let loadedPassword = "changeme";
 
-// 1. Try to read from secret file (Highest Priority)
 if (fs.existsSync(SECRET_FILE)) {
   try {
     const filePass = fs.readFileSync(SECRET_FILE, "utf-8").trim();
@@ -39,16 +36,23 @@ if (fs.existsSync(SECRET_FILE)) {
   } catch (e) {
     console.error("Warning: Could not read admin_secret.txt", e.message);
   }
-} 
-// 2. Fallback to Environment Variable
-else if (process.env.ADMIN_PASSWORD) {
+} else if (process.env.ADMIN_PASSWORD) {
   loadedPassword = String(process.env.ADMIN_PASSWORD).trim();
   console.log("Configuration: Loaded password from Environment Variable");
 }
 
 const ADMIN_PASSWORD = loadedPassword;
 const SITE_URL = (process.env.SITE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
-const PDF_TOKEN_MINUTES = Number(process.env.PDF_TOKEN_MINUTES || 60);
+// 24 Hours in minutes
+const PDF_TOKEN_MINUTES = 1440; 
+
+/* --- CONSTANTS --- */
+const PAPERS = [
+  { slug: "plural-intelligence", title: "Plural Intelligence", file: "plural-intelligence.pdf" },
+  { slug: "governance-first-ai", title: "Governance-First AI", file: "governance-first-ai.pdf" },
+  { slug: "decision-systems-for-boards", title: "Decision Systems for Boards", file: "decision-systems-for-boards.pdf" },
+  { slug: "ethics-without-ideology", title: "Ethics Without Ideology", file: "ethics-without-ideology.pdf" },
+];
 
 /* --- MIDDLEWARE --- */
 app.set("view engine", "ejs");
@@ -114,27 +118,53 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
 
-function site() {
-  return { name: "Atmakosh LLM", tagline: "The Soul-Repository AI" };
+/* --- DATA HEALER (Fixes missing IDs) --- */
+function healData() {
+  const records = readNDJSON(INVITES_FILE);
+  let changed = false;
+  const fixed = records.map(r => {
+    if (!r.id) { r.id = generateId(); changed = true; } // Assign ID if missing
+    return r;
+  });
+  if (changed) {
+    updateNDJSON(INVITES_FILE, fixed);
+    console.log("System: Healed data - Fixed missing IDs.");
+  }
+}
+healData(); // Run on startup
+
+/* --- PDF CONTROL HELPERS --- */
+function getPaperConfig() {
+  const cfg = readJSON(PAPERS_CONFIG_FILE);
+  return cfg || { disabled: [] };
 }
 
-function hash(v) {
-  return crypto.createHash("sha256").update(v).digest("hex");
+function isPaperEnabled(slug) {
+  const cfg = getPaperConfig();
+  return !cfg.disabled.includes(slug);
 }
 
-function isAdmin(req) {
-  return req.cookies.admin === hash(ADMIN_PASSWORD);
+function togglePaper(slug) {
+  const cfg = getPaperConfig();
+  if (cfg.disabled.includes(slug)) {
+    cfg.disabled = cfg.disabled.filter(s => s !== slug); // Enable
+  } else {
+    cfg.disabled.push(slug); // Disable
+  }
+  writeJSON(PAPERS_CONFIG_FILE, cfg);
 }
 
-/* --- AUDIT & EMAIL --- */
+/* --- UTILS --- */
+function site() { return { name: "Atmakosh LLM", tagline: "The Soul-Repository AI" }; }
+function hash(v) { return crypto.createHash("sha256").update(v).digest("hex"); }
+function isAdmin(req) { return req.cookies.admin === hash(ADMIN_PASSWORD); }
+
 function getIP(req) {
   const xf = String(req.headers["x-forwarded-for"] || "");
   return xf ? xf.split(",")[0].trim() : String(req.socket.remoteAddress || "").slice(0, 80);
 }
 
-function getUA(req) {
-  return String(req.headers["user-agent"] || "").slice(0, 255);
-}
+function getUA(req) { return String(req.headers["user-agent"] || "").slice(0, 255); }
 
 async function audit(req, event, meta = {}) {
   const record = {
@@ -210,13 +240,6 @@ async function sendInviteReceivedEmail(name, toEmail) {
     await transport.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: toEmail, subject, text });
   } catch (e) { console.error("Receipt email failed:", e.message); }
 }
-
-const PAPERS = [
-  { slug: "plural-intelligence", title: "Plural Intelligence", file: "plural-intelligence.pdf" },
-  { slug: "governance-first-ai", title: "Governance-First AI", file: "governance-first-ai.pdf" },
-  { slug: "decision-systems-for-boards", title: "Decision Systems for Boards", file: "decision-systems-for-boards.pdf" },
-  { slug: "ethics-without-ideology", title: "Ethics Without Ideology", file: "ethics-without-ideology.pdf" },
-];
 
 function scoreInvite(intent = "") {
   let score = 0;
@@ -301,31 +324,57 @@ app.post("/api/invite", async (req, res) => {
   return res.redirect("/invite?submitted=1");
 });
 
-/* SECURE DOWNLOADS (FILE SYSTEM) */
+/* SECURE DOWNLOADS (24h Window & Admin Control) */
 app.get("/whitepapers/access", accessLimiter, (req, res) => {
   res.locals.META = { robots: "noindex" };
-  res.render("pages/whitepapers-access", { papers: null, error: null });
+  res.render("pages/whitepapers-access", { papers: null, error: null, notice: null });
 });
 
 app.post("/whitepapers/access", accessLimiter, async (req, res) => {
   const email = String(req.body.email || "").trim().toLowerCase();
   
   const invites = readNDJSON(INVITES_FILE);
-  const userInvite = invites.reverse().find(r => r.email === email && r.status === 'approved');
+  // Find approved invite. Using findIndex to update timestamp if needed.
+  const idx = invites.findIndex(r => r.email === email && r.status === 'approved');
 
-  if (!userInvite) {
+  if (idx === -1) {
     return res.render("pages/whitepapers-access", {
       papers: null,
       error: "Access not approved. Please wait for approval.",
+      notice: null
     });
   }
 
+  const userInvite = invites[idx];
+  const now = Date.now();
+
+  // 1. Check/Start 24-Hour Timer
+  if (userInvite.access_started_at) {
+    const startTime = new Date(userInvite.access_started_at).getTime();
+    const limit = 24 * 60 * 60 * 1000; // 24 hours
+    if ((now - startTime) > limit) {
+      return res.render("pages/whitepapers-access", { 
+        papers: null, 
+        error: "Your 24-hour access window has expired. Access revoked.",
+        notice: null
+      });
+    }
+  } else {
+    // First access: Start timer
+    userInvite.access_started_at = new Date().toISOString();
+    invites[idx] = userInvite;
+    updateNDJSON(INVITES_FILE, invites);
+  }
+
+  // 2. Generate Tokens (only for enabled papers)
   const links = [];
-  const expiresAt = new Date(Date.now() + PDF_TOKEN_MINUTES * 60 * 1000).toISOString();
+  const expiresAt = new Date(now + PDF_TOKEN_MINUTES * 60 * 1000).toISOString();
   const ip = getIP(req);
   const ua = getUA(req);
 
   PAPERS.forEach(p => {
+    if (!isPaperEnabled(p.slug)) return; // Skip disabled
+
     const token = crypto.randomBytes(24).toString("hex");
     const tokenRecord = {
       email, paper: p.slug, token, expires_at: expiresAt, ip, user_agent: ua, used_at: null
@@ -334,8 +383,19 @@ app.post("/whitepapers/access", accessLimiter, async (req, res) => {
     links.push({ title: p.title, url: `${SITE_URL}/download/${token}` });
   });
 
+  if (links.length === 0) {
+    return res.render("pages/whitepapers-access", { 
+      papers: null, error: "No whitepapers are currently available.", notice: null 
+    });
+  }
+
   await audit(req, "pdf_token_issued", { email });
-  res.render("pages/whitepapers-access", { papers: links, error: null });
+  
+  res.render("pages/whitepapers-access", { 
+    papers: links, 
+    error: null,
+    notice: "Notice: You have access to these whitepapers for 24 hours. After that, your access will expire."
+  });
 });
 
 app.get("/download/:token", downloadLimiter, async (req, res) => {
@@ -353,6 +413,9 @@ app.get("/download/:token", downloadLimiter, async (req, res) => {
   if ((t.ip && t.ip !== ip) || (t.user_agent && t.user_agent !== ua)) {
     return res.status(403).send("Access denied (IP Mismatch)");
   }
+
+  // Check if admin disabled the paper
+  if (!isPaperEnabled(t.paper)) return res.status(403).send("This document is currently unavailable.");
 
   t.used_at = new Date().toISOString();
   tokens[tokenIdx] = t;
@@ -444,6 +507,33 @@ app.get("/admin/analytics", (req, res) => {
   res.render("pages/admin-analytics", { counts });
 });
 
+// Admin Route to Disable Papers
+app.get("/admin/papers", (req, res) => {
+  if (!isAdmin(req)) return res.redirect("/admin");
+  const cfg = getPaperConfig();
+  res.send(`
+    <h1>Manage Whitepapers</h1>
+    <ul>
+      ${PAPERS.map(p => `
+        <li>
+          <strong>${p.title}</strong> 
+          [${cfg.disabled.includes(p.slug) ? "<span style='color:red'>DISABLED</span>" : "<span style='color:green'>ACTIVE</span>"}]
+          <form method="POST" action="/admin/papers/${p.slug}/toggle" style="display:inline">
+            <button>${cfg.disabled.includes(p.slug) ? "Enable" : "Disable"}</button>
+          </form>
+        </li>
+      `).join("")}
+    </ul>
+    <a href="/admin/invites">Back to Dashboard</a>
+  `);
+});
+
+app.post("/admin/papers/:slug/toggle", (req, res) => {
+  if (!isAdmin(req)) return res.redirect("/admin");
+  togglePaper(req.params.slug);
+  res.redirect("/admin/papers");
+});
+
 app.get("/admin/email-templates", (req, res) => {
   if (!isAdmin(req)) return res.redirect("/admin");
   getEmailTemplateHelper("init");
@@ -521,7 +611,7 @@ ${urls.map(u => `<url><loc>${u}</loc></url>`).join("\n")}
 app.get("/healthz", (req, res) => {
   try {
     fs.accessSync(DATA_DIR, fs.constants.W_OK);
-    res.json({ ok: true, service: "atmakosh-llm-site", storage: "writable", ts: new Date().toISOString() });
+    res.json({ ok: true, service: "atmakosh-llm-site", storage: "writable",QK: true, ts: new Date().toISOString() });
   } catch (e) {
     res.status(500).json({ ok: false, error: "Storage Read-only", ts: new Date().toISOString() });
   }
