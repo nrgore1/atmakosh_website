@@ -11,7 +11,10 @@ const rateLimit = require("express-rate-limit");
 const pool = require("./db");
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
+
+// FIX: Define the fallback file path
+const INVITES_FILE = path.join(__dirname, "data", "invites.ndjson");
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "changeme";
 const SITE_URL = (process.env.SITE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
@@ -322,6 +325,7 @@ app.get("/whitepapers/access", accessLimiter, (req, res) => {
   res.render("pages/whitepapers-access", { papers: null, error: null });
 });
 
+/* ROBUST INVITE HANDLER (DB + JSON Fallback) */
 app.post("/api/invite", async (req, res) => {
   const name = String(req.body.name || "").trim() || null;
   const email = String(req.body.email || "").trim().toLowerCase();
@@ -332,19 +336,58 @@ app.post("/api/invite", async (req, res) => {
     return res.status(400).send("Email is required");
   }
 
+  let savedToDb = false;
+
+  // 1. Attempt Database Insert
   try {
     await pool.execute(
       "INSERT INTO invites (name, email, intent, status, score) VALUES (?, ?, ?, 'pending', ?)",
       [name, email, intent, score]
     );
+    savedToDb = true;
   } catch (e) {
+    // If it's a duplicate email in DB, handle gracefully
     if (e.code === "ER_DUP_ENTRY") {
+      try { await audit(req, "invite_duplicate", { email }); } catch {}
       return res.redirect("/invite?duplicate=1");
     }
-    throw e;
+    
+    // Log the DB error but DO NOT CRASH. Proceed to fallback.
+    console.error("DB Insert Failed (Swapping to File):", e.message);
   }
 
-  // Non-blocking side effects
+  // 2. Fallback to JSON File if DB failed
+  if (!savedToDb) {
+    try {
+      // Simple duplicate check in file
+      if (fs.existsSync(INVITES_FILE)) {
+        const fileContent = fs.readFileSync(INVITES_FILE, "utf-8");
+        if (fileContent.includes(`"email":"${email}"`)) {
+          return res.redirect("/invite?duplicate=1");
+        }
+      }
+
+      // Append to file
+      const record = { 
+        name, 
+        email, 
+        intent, 
+        score, 
+        status: 'pending', 
+        created_at: new Date(),
+        saved_via: 'file_fallback'
+      };
+      
+      fs.appendFileSync(INVITES_FILE, JSON.stringify(record) + "\n");
+      console.log("Saved invite to JSON fallback.");
+      
+    } catch (fileErr) {
+      console.error("Critical: File write failed:", fileErr.message);
+      return res.status(500).send("Unable to process invite request. Please try again later.");
+    }
+  }
+
+  // 3. Success Actions (Audit & Email)
   try { await audit(req, "invite_submitted", { email }); } catch {}
   try { await sendInviteReceivedEmail(name, email); } catch {}
 
@@ -693,12 +736,6 @@ app.get("/why-atmakosh", (req, res) => {
   res.render("pages/why-atmakosh");
 });
 
-
-app.get("/whitepaper-vision", (req, res) => {
-  res.redirect(301, "/whitepapers");
-});
-
-
 app.get("/whitepaper-vision", (req, res) => {
   res.locals.META = {
     title: "Whitepaper Vision — Atmakosh LLM",
@@ -720,9 +757,7 @@ app.get("/leadership", (req, res) => {
   res.render("pages/leadership");
 });
 
-
 app.get("/team", (req, res) => res.redirect(301, "/leadership"));
-
 
 app.get("/terms", (req, res) => {
   res.locals.META = {
@@ -734,9 +769,7 @@ app.get("/terms", (req, res) => {
   res.render("pages/terms");
 });
 
-
 app.get("/terms-of-use", (req, res) => res.redirect(301, "/terms"));
-
 
 /* ======================
    Link safety redirects
@@ -744,13 +777,7 @@ app.get("/terms-of-use", (req, res) => res.redirect(301, "/terms"));
 
 app.get("/why", (req, res) => res.redirect(301, "/why-atmakosh"));
 app.get("/about", (req, res) => res.redirect(301, "/why-atmakosh"));
-
-app.get("/team", (req, res) => res.redirect(301, "/leadership"));
-
 app.get("/vision", (req, res) => res.redirect(301, "/whitepaper-vision"));
-
-app.get("/terms-of-use", (req, res) => res.redirect(301, "/terms"));
-
 
 /* ======================
    404 handler (must be last)
@@ -759,43 +786,3 @@ app.use((req, res) => {
   res.status(404);
   res.render("pages/404");
 });
-
-
-/* ======================
-   INVITE REQUEST API
-====================== */
-
-
-/* ======================
-   INVITE ERROR DIAGNOSTICS
-====================== */
-function logInviteError(err) {
-  console.error("INVITE ERROR OCCURRED");
-  if (!err) return;
-
-  console.error("TYPE:", typeof err);
-  console.error("MESSAGE:", err.message);
-  console.error("CODE:", err.code);
-  console.error("ERRNO:", err.errno);
-  console.error("SQL MESSAGE:", err.sqlMessage);
-  console.error("STACK:", err.stack);
-}
-
-
-/* ======================
-   INVITE ERROR DIAGNOSTICS
-====================== */
-function logInviteError(err) {
-  console.error("INVITE ERROR OCCURRED");
-  if (!err) return;
-
-  console.error("TYPE:", typeof err);
-  console.error("MESSAGE:", err.message);
-  console.error("CODE:", err.code);
-  console.error("ERRNO:", err.errno);
-  console.error("SQL MESSAGE:", err.sqlMessage);
-  console.error("STACK:", err.stack);
-}
-
-
-
