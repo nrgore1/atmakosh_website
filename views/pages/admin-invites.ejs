@@ -2,33 +2,50 @@
 <%- include('../partials/nav', { SITE, path }) %>
 
 <section class="section">
+  <div style="margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 12px; display: flex; gap: 20px; align-items: center;">
+    <strong style="color: #fff;">Admin Menu:</strong>
+    <a href="/admin/invites" class="btn btn--primary" style="padding: 8px 16px; font-size: 14px;">Manage Invites</a>
+    <a href="/admin/analytics" class="btn btn--ghost" style="padding: 8px 16px; font-size: 14px;">View Analytics</a>
+    <a href="/admin/logout" style="margin-left: auto; color: #ff6b6b; text-decoration: none;">Logout</a>
+  </div>
+
   <h1>Invitations</h1>
 
-  <table>
+  <table class="admin-table" style="width: 100%; border-collapse: collapse;">
     <thead>
-      <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Status</th>
-        <th>Score</th>
-        <th>Actions</th>
+      <tr style="text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <th style="padding: 12px;">Name</th>
+        <th style="padding: 12px;">Email</th>
+        <th style="padding: 12px;">Status</th>
+        <th style="padding: 12px;">Score</th>
+        <th style="padding: 12px;">Actions</th>
       </tr>
     </thead>
     <tbody>
       <% rows.forEach(r => { %>
-        <tr>
-          <td><%= r.name %></td>
-          <td><%= r.email %></td>
-          <td><%= r.status %></td>
-          <td><%= r.score %></td>
-          <td>
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+          <td style="padding: 12px;"><%= r.name %></td>
+          <td style="padding: 12px;"><%= r.email %></td>
+          <td style="padding: 12px;">
+            <span style="
+              padding: 4px 8px; border-radius: 4px; font-size: 12px;
+              background: <%= r.status === 'approved' ? '#10b981' : (r.status === 'rejected' ? '#ef4444' : '#f59e0b') %>;
+              color: #000; font-weight: bold;
+            ">
+              <%= r.status.toUpperCase() %>
+            </span>
+          </td>
+          <td style="padding: 12px;"><%= r.score %></td>
+          <td style="padding: 12px;">
             <% if (r.status === 'pending') { %>
               <form method="POST" action="/admin/invite/<%= r.id %>/approve" style="display:inline;">
-                <button>Approve</button>
+                <button class="btn" style="padding: 6px 12px; font-size: 12px; background: #10b981; color: #000; border: none; cursor: pointer;">Approve</button>
               </form>
-              <form method="POST" action="/admin/invite/<%= r.id %>/reject" style="display:inline;">
-                <button>Reject</button>
+              <form method="POST" action="/admin/invite/<%= r.id %>/reject" style="display:inline; margin-left: 6px;">
+                <button class="btn" style="padding: 6px 12px; font-size: 12px; background: #ef4444; color: white; border: none; cursor: pointer;">Reject</button>
               </form>
+            <% } else { %>
+              <span class="muted" style="font-size: 12px;">—</span>
             <% } %>
           </td>
         </tr>
