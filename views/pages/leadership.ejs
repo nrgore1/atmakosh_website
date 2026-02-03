@@ -2,62 +2,78 @@
 <%- include('../partials/nav', { SITE, path }) %>
 
 <section class="section">
-  <h1>Leadership</h1>
-
+  <h1>Leadership & Vision</h1>
   <p class="lead">
-    Atmakosh is guided by the belief that the future of artificial intelligence
-    must unite intelligence with ethics, responsibility, and long-term
-    human well-being.
+    Atmakosh LLM is steered by a commitment to principled, auditable intelligence.
+    We believe that AI alignment is not just an engineering problem, but a philosophical one.
   </p>
 
-  <div class="card" style="max-width:820px;">
-    <h3>Founder</h3>
-
-    <p>
-      <strong>Atmakosh LLM is a Soul-Repository AI</strong> built for ethical,
-      restrained, and auditable reasoning in high-stakes environments.
-    </p>
-
-    <p>
-      While most AI systems focus on optimizing outputs, Atmakosh LLM is designed
-      to support <strong>principled decision-making</strong>. Inspired by Indian
-      philosophical traditions and translated into secular governance frameworks,
-      it integrates ethics, behavioral insight, and long-term systems thinking
-      directly into the reasoning layer.
-    </p>
-
-    <p>
-      The system reframes instructions into principled questions, models
-      second-order effects, and surfaces value trade-offs — so leaders receive
-      responsible action options, not opaque recommendations.
-    </p>
-
-    <p>
-      An <strong>invite-only preview</strong> will be opening shortly for boards,
-      executives, and mission-critical teams. If your organization is exploring AI
-      that can be trusted, explained, and governed, you can request early access
-      via the invite page.
-    </p>
-
-    <p style="margin-top:20px;">
-      <strong>Dr. Narendra Gore</strong><br/>
-      Founder, Atmakosh LLC<br/>
-      <a href="https://www.linkedin.com/in/narendra-gore/" target="_blank" class="muted">
-        LinkedIn Profile
-      </a>
-    </p>
+  <div style="
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.05));
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 12px;
+    padding: 32px;
+    margin: 40px 0;
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.3);
+  ">
+    <div style="display:flex; justify-content:space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
+      <div style="flex: 1; min-width: 300px;">
+        <span style="
+          background: rgba(99, 102, 241, 0.2); 
+          color: #a5b4fc; 
+          font-size: 0.75rem; 
+          text-transform: uppercase; 
+          letter-spacing: 1px; 
+          padding: 4px 8px; 
+          border-radius: 4px; 
+          font-weight: 600;
+        ">Research Initiative</span>
+        <h2 style="margin-top: 12px; color: #fff;">Bharat Builds Thoughtful AI</h2>
+        <p style="font-size: 1.05rem; line-height: 1.6; color: #e2e8f0;">
+          As part of our mission to ground artificial intelligence in deeper wisdom, we are releasing select research to the public. 
+          This whitepaper explores how <strong>Indian Epistemology</strong>—specifically systems like <em>Nyaya</em> (logic) and <em>Anekantavada</em> (multi-sided truth)—can be leveraged to create AI that is not just smarter, but more thoughtful, context-aware, and auditable.
+        </p>
+      </div>
+      
+      <div style="
+        background: rgba(15, 23, 42, 0.6); 
+        padding: 24px; 
+        border-radius: 8px; 
+        flex: 0 0 340px; 
+        border: 1px solid rgba(255,255,255,0.05);
+      ">
+        <h3 style="margin-top:0; font-size: 1.1rem; color: #fff;">Indic Epistemology for AI</h3>
+        <p style="font-size: 0.9rem; color: #cbd5e1; margin-bottom: 20px; line-height: 1.5;">
+          <strong>Synopsis:</strong> Most modern AI operates on binary truth tables. This paper proposes a "Council Intelligence" framework inspired by Vedanta and Jain logic, designing systems capable of handling ambiguity and multiple perspectives without hallucination.
+        </p>
+        <a href="/public/whitepaper/indic" class="btn btn--primary" style="width: 100%; text-align: center; display: block; text-decoration: none;">
+          Download PDF (Open Access)
+        </a>
+        <div style="text-align: center; margin-top: 10px; font-size: 0.8rem; color: #cbd5e1;">
+          No invitation required • PDF
+        </div>
+      </div>
+    </div>
   </div>
-</section>
 
-<section class="section">
-  <h2>Founder’s Viewpoint</h2>
-
-  <p class="lead">
-    Why the next generation of AI must move beyond intelligence alone.
-  </p>
-
-  <div class="card" style="max-width:900px;">
-    <%- include('../partials/founder-article') %>
+  <div class="leadership-grid" style="margin-top: 60px;">
+    <div class="leader-card">
+      <h3>Dr. Narendra Gore</h3>
+      <p class="role">Founder & Chief Architect</p>
+      <p>
+        Building Atmakosh to bridge the gap between ancient wisdom and modern compute.
+        Focused on <a href="/whitepapers" style="color: #60a5fa; text-decoration: underline;">Governance-First AI</a> architectures.
+      </p>
+    </div>
+    
+    <div class="leader-card">
+      <h3>Board of Advisors</h3>
+      <p class="role">Ethics & Governance</p>
+      <p>
+        A council of interdisciplinary experts ensuring Atmakosh adheres to its
+        <a href="/whitepaper-vision" style="color: #60a5fa; text-decoration: underline;">founding principles</a> of restraint and auditability.
+      </p>
+    </div>
   </div>
 </section>
 

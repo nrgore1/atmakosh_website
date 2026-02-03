@@ -295,6 +295,17 @@ app.get("/why", (req, res) => res.redirect(301, "/why-atmakosh"));
 app.get("/about", (req, res) => res.redirect(301, "/why-atmakosh"));
 app.get("/vision", (req, res) => res.redirect(301, "/whitepaper-vision"));
 
+/* --- PUBLIC DOWNLOAD ROUTE (Leadership Initiative) --- */
+app.get("/public/whitepaper/indic", downloadLimiter, (req, res) => {
+  const filePath = path.join(__dirname, "private", "pdfs", "whitepaper3_indic_epistemology.pdf");
+  if (fs.existsSync(filePath)) {
+    res.download(filePath, "Atmakosh_Indic_Epistemology_Whitepaper.pdf");
+    audit(req, "public_whitepaper_download", { file: "whitepaper3_indic_epistemology.pdf" });
+  } else {
+    res.status(404).send("Document not found. Please contact support.");
+  }
+});
+
 /* ROBUST INVITE HANDLER (WITH VALIDATION) */
 app.post("/api/invite", async (req, res) => {
   const name = String(req.body.name || "").trim();
