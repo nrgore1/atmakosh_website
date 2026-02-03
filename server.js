@@ -42,14 +42,8 @@ if (fs.existsSync(SECRET_FILE)) {
 }
 
 const ADMIN_PASSWORD = loadedPassword;
-
-// FIX: Auto-detects Prod vs Local.
-// If SITE_URL is in .env (Hostinger), it uses it. If not (Local), it uses localhost.
 const SITE_URL = (process.env.SITE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
-console.log(`System Startup: Public Access URL set to: ${SITE_URL}`);
-
-// 24 Hours in minutes
-const PDF_TOKEN_MINUTES = 1440; 
+const PDF_TOKEN_MINUTES = 1440; // 24 Hours
 
 /* --- CONSTANTS --- */
 const PAPERS = [
@@ -128,7 +122,7 @@ function healData() {
   const records = readNDJSON(INVITES_FILE);
   let changed = false;
   const fixed = records.map(r => {
-    if (!r.id) { r.id = generateId(); changed = true; } 
+    if (!r.id) { r.id = generateId(); changed = true; } // Assign ID if missing
     return r;
   });
   if (changed) {
@@ -157,6 +151,16 @@ function togglePaper(slug) {
     cfg.disabled.push(slug); // Disable
   }
   writeJSON(PAPERS_CONFIG_FILE, cfg);
+}
+
+/* --- VALIDATION HELPERS (NEW) --- */
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidLinkedIn(url) {
+  if (!url) return true; // Optional field
+  return /linkedin\.com\//.test(url);
 }
 
 /* --- UTILS --- */
@@ -188,10 +192,8 @@ function mailer() {
   const port = Number(process.env.SMTP_PORT || 587);
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  const secure = String(process.env.SMTP_SECURE || "false").toLowerCase() === "true";
-
   if (!host || !user || !pass) return null;
-  return nodemailer.createTransport({ host, port, secure, auth: { user, pass } });
+  return nodemailer.createTransport({ host, port, secure: false, auth: { user, pass } });
 }
 
 function getEmailTemplateHelper(name) {
@@ -203,7 +205,7 @@ function getEmailTemplateHelper(name) {
     ];
     writeJSON(TEMPLATES_FILE, templates);
   }
-  return templates.find(t => t.name === name) || null;
+  return templates.find(t => t.name === name);
 }
 
 async function sendApprovalEmail(toEmail, opts = {}) {
@@ -287,34 +289,43 @@ app.get("/terms", (req, res) => res.render("pages/terms"));
 app.get("/why-atmakosh", (req, res) => res.render("pages/why-atmakosh"));
 app.get("/whitepaper-vision", (req, res) => res.render("pages/whitepaper-vision"));
 
-// Redirects
 app.get("/team", (req, res) => res.redirect(301, "/leadership"));
 app.get("/terms-of-use", (req, res) => res.redirect(301, "/terms"));
 app.get("/why", (req, res) => res.redirect(301, "/why-atmakosh"));
 app.get("/about", (req, res) => res.redirect(301, "/why-atmakosh"));
 app.get("/vision", (req, res) => res.redirect(301, "/whitepaper-vision"));
 
-/* ROBUST INVITE HANDLER (FILE SYSTEM) */
+/* ROBUST INVITE HANDLER (WITH VALIDATION) */
 app.post("/api/invite", async (req, res) => {
-  const name = String(req.body.name || "").trim() || null;
+  const name = String(req.body.name || "").trim();
   const email = String(req.body.email || "").trim().toLowerCase();
-  const intent = String(req.body.intent || "").trim() || null;
+  const linkedin = String(req.body.linkedin || "").trim();
+  const intent = String(req.body.intent || "").trim();
   const score = scoreInvite(intent);
 
   if (!email) return res.status(400).send("Email is required");
 
-  // Check duplicate
+  // 1. Validation Logic
+  if (!isValidEmail(email)) {
+    return res.redirect("/invite?error=invalid_email");
+  }
+  if (linkedin && !isValidLinkedIn(linkedin)) {
+    return res.redirect("/invite?error=invalid_linkedin");
+  }
+
+  // 2. Check duplicate
   const records = readNDJSON(INVITES_FILE);
   if (records.find(r => r.email === email)) {
     await audit(req, "invite_duplicate", { email });
     return res.redirect("/invite?duplicate=1");
   }
 
-  // Create
+  // 3. Create Record
   const newInvite = {
     id: generateId(),
     name,
     email,
+    linkedin,
     intent,
     score,
     status: 'pending',
@@ -405,17 +416,14 @@ app.post("/whitepapers/access", accessLimiter, async (req, res) => {
 
 app.get("/download/:token", downloadLimiter, async (req, res) => {
   const token = req.params.token;
-  const ip = getIP(req);
-  const ua = getUA(req);
-
   const tokens = readNDJSON(TOKENS_FILE);
-  const tokenIdx = tokens.findIndex(t => t.token === token);
+  const idx = tokens.findIndex(t => t.token === token);
 
-  if (tokenIdx === -1) return res.status(403).send("Access denied");
-  const t = tokens[tokenIdx];
+  if (idx === -1) return res.status(403).send("Access denied");
+  const t = tokens[idx];
   if (t.used_at) return res.status(403).send("Link already used");
   if (new Date() > new Date(t.expires_at)) return res.status(403).send("Link expired");
-  if ((t.ip && t.ip !== ip) || (t.user_agent && t.user_agent !== ua)) {
+  if ((t.ip && t.ip !== getIP(req)) || (t.user_agent && t.user_agent !== getUA(req))) {
     return res.status(403).send("Access denied (IP Mismatch)");
   }
 
@@ -426,10 +434,10 @@ app.get("/download/:token", downloadLimiter, async (req, res) => {
   tokens[tokenIdx] = t;
   updateNDJSON(TOKENS_FILE, tokens);
 
-  const paper = PAPERS.find(p => p.slug === t.paper);
-  if (!paper) return res.status(404).send("File not found");
+  const p = PAPERS.find(x => x.slug === t.paper);
+  if (!p) return res.status(404).send("File not found");
 
-  const filePath = path.join(__dirname, "private", "pdfs", paper.file);
+  const filePath = path.join(__dirname, "private", "pdfs", p.file);
   if (fs.existsSync(filePath)) res.download(filePath);
   else res.status(404).send("File not found");
 });
@@ -566,10 +574,10 @@ app.post("/admin/email-templates/:name", (req, res) => {
 app.get("/admin/invites.csv", (req, res) => {
   if (!isAdmin(req)) return res.status(403).send("Forbidden");
   const rows = readNDJSON(INVITES_FILE).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-  const header = "id,name,email,status,score,created_at\n";
+  const header = "id,name,email,linkedin,status,score,created_at\n";
   const csv = header + rows.map(r => {
     const safeName = String(r.name || "").replace(/"/g, '""');
-    return `${r.id},"${safeName}","${r.email}",${r.status},${r.score},${r.created_at}`;
+    return `${r.id},"${safeName}","${r.email}","${r.linkedin||''}",${r.status},${r.score},${r.created_at}`;
   }).join("\n");
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", "attachment; filename=invites.csv");

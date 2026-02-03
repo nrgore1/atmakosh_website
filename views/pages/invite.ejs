@@ -16,31 +16,12 @@
           <path fill="currentColor" d="M9.0 16.2l-3.5-3.5 1.4-1.4 2.1 2.1 5.3-5.3 1.4 1.4z"/>
         </svg>
       </div>
-
       <h3>Thank you — your request has been received</h3>
-
       <p>We’ve added your name and email to the Atmakosh LLM invitation registry.</p>
-      <p>Your request is now <strong>under review</strong>. Our team evaluates applications on a rolling basis.</p>
-
-      <h4 class="invite-next-title">What happens next</h4>
-      <ol class="invite-timeline">
-        <li>We review your request for alignment and intent</li>
-        <li>Selected participants receive an approval email</li>
-        <li>Approved users gain access to whitepapers and the Atmakosh LLM preview</li>
-      </ol>
-
-      <p class="muted">No further action is required at this time.</p>
-
       <div style="margin-top:22px;">
         <a href="/" class="btn btn--secondary">Back to Home</a>
       </div>
     </div>
-
-    <script>
-      window.dispatchEvent(new CustomEvent("invite_confirmed_view", {
-        detail: { source: "invite_confirmation_page" }
-      }));
-    </script>
 
   <% } else { %>
     <form method="POST" action="/api/invite" class="invite-form" id="invite-form">
@@ -56,7 +37,14 @@
 
       <label>
         <span>LinkedIn Profile</span>
-        <input type="url" name="linkedin" placeholder="https://linkedin.com/in/..." />
+        <input 
+          type="url" 
+          name="linkedin" 
+          placeholder="https://www.linkedin.com/in/..." 
+          pattern=".*linkedin\.com.*" 
+          title="Please enter a valid LinkedIn URL (e.g., https://linkedin.com/in/yourname)"
+        />
+        <small style="color:#888; font-size: 0.85em;">(Optional, helps expedite approval)</small>
       </label>
 
       <label>
@@ -68,33 +56,37 @@
         Request Invitation
       </button>
     </form>
-
-    <script>
-      (function () {
-        const form = document.getElementById("invite-form");
-        const btn = document.getElementById("invite-submit");
-        if (!form || !btn) return;
-
-        form.addEventListener("submit", function () {
-          btn.disabled = true;
-          btn.innerText = "Submitting…";
-        });
-      })();
-    </script>
   <% } %>
   
   <% if (query && query.duplicate) { %>
-  <div class="notice">
-    An invitation request for this email already exists.
-    If it’s approved, you’ll receive an email.
-  </div>
+    <div class="note note--warning" style="margin-top:20px; color:#f59e0b;">
+      <strong>Notice:</strong> An invitation request for this email already exists.
+    </div>
   <% } %>
   
   <% if (query && query.error === 'invalid_email') { %>
-  <div class="note note--error" style="color:red; margin-top:10px;">
-    Please enter a valid email address.
-  </div>
+    <div class="note note--error" style="margin-top:20px; color:#ef4444; border-left: 3px solid #ef4444; padding-left:10px;">
+      <strong>Error:</strong> Please enter a valid email address.
+    </div>
+  <% } %>
+
+  <% if (query && query.error === 'invalid_linkedin') { %>
+    <div class="note note--error" style="margin-top:20px; color:#ef4444; border-left: 3px solid #ef4444; padding-left:10px;">
+      <strong>Error:</strong> Please enter a valid LinkedIn profile URL (must contain linkedin.com).
+    </div>
   <% } %>
 </section>
+
+<script>
+  (function () {
+    const form = document.getElementById("invite-form");
+    const btn = document.getElementById("invite-submit");
+    if (!form || !btn) return;
+    form.addEventListener("submit", function () {
+      btn.disabled = true;
+      btn.innerText = "Submitting…";
+    });
+  })();
+</script>
 
 <%- include('../partials/footer') %>
