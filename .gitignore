@@ -1,6 +1,7 @@
-node_modules/
+
+# private storage
+protected-data/
+atmakosh_private/
+*.jsonl
+*.log
 .env
-data/invites.ndjson
-npm-debug.log
-.DS_Store
-reflog_backup.txt

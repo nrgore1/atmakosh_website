@@ -1,25 +1,36 @@
-# Atmakosh LLM — Teaser Website (Node.js)
+# Atmakosh Static Website with Contact Form
 
-Pages:
-- / (Landing)
-- /invite (Invite-only signup)
-- /whitepapers
-- /leadership
-- /terms
+Upload the contents of this folder directly into Hostinger `public_html`.
 
-## Run locally
-```bash
-npm install
-npm start
-# open http://localhost:3000
-Where signups are stored
-data/invites.ndjson (append-only, one JSON object per line)
+## Contact form storage
 
-Deploy on Hostinger Node.js
-Upload this folder (or git deploy)
+`contact-submit.php` saves submissions as JSON Lines in:
 
-Set “Start command” to: npm start
+```text
+../atmakosh_private/contact-submissions.jsonl
+```
 
-Ensure environment variable PORT is provided by Hostinger (common). If not, set it.
+when permissions allow. This is outside `public_html`, which protects it from direct browser access.
 
-Tip: If you want MySQL/MariaDB storage later, replace the /api/invite handler with a DB insert.
+If Hostinger does not allow creating a sibling folder, it falls back to:
+
+```text
+public_html/protected-data/contact-submissions.jsonl
+```
+
+That fallback folder receives an `.htaccess` deny rule.
+
+## Security included
+
+- Server-side validation and sanitization
+- Honeypot spam field
+- Minimum form-fill timing check
+- Basic per-IP rate limiting
+- JSONL file locking
+- `.htaccess` blocks JSON/JSONL/env/log downloads
+- Security headers and restrictive Content Security Policy
+- Directory listing disabled
+
+## Important
+
+This is suitable for a simple Hostinger PHP/static deployment. For stronger protection against scraping and abuse, add Cloudflare Turnstile or reCAPTCHA, Cloudflare WAF, and email notifications.
